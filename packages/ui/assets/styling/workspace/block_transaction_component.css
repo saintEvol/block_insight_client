@@ -1,0 +1,37 @@
+#block_transaction_component_container {
+    border: 1px solid #ccc;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    align-content: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.ellipsis-label {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+}
+
+.sub_tx_container {
+
+}
+
+.sub_tx_buttons_container {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.solscan_link {
+    background: white;
+    color: black;
+}
+
+#tx_status_filter_form_container {
+
+}

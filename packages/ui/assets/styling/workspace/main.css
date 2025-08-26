@@ -1,0 +1,10 @@
+#empty_container {
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+
+}
+
+#empty_tips {
+    font-size: 5rem;
+}

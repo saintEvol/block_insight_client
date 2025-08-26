@@ -1,0 +1,10 @@
+pub mod workspace;
+mod menu_panel;
+mod right_panel;
+mod transaction_info_input_panel;
+mod main;
+mod left_panel;
+mod block_transaction_component;
+mod block_transaction_list;
+mod transaction_filter_panel;
+mod block_transaction_list_state;

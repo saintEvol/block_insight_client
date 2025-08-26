@@ -1,0 +1,16 @@
+[package]
+name = "utils"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+once_cell.workspace = true
+serde.workspace = true
+serde_json = {workspace = true}
+dioxus.workspace = true
+[target.'cfg(target_arch="wasm32")'.dependencies]
+web-sys = {workspace = true, features = ["Window", "Storage"]}
+js-sys ={workspace = true}
+
+[features]
+#web = ["dioxus/web", "dep:web-sys"]

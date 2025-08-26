@@ -1,0 +1,19 @@
+[package]
+name = "models"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+utils.workspace = true
+dioxus = {workspace = true}
+reqwest = {workspace = true}
+block_insight_cross = {workspace = true, features = ["serde", "client"]}
+solana-transaction-error.workspace = true
+futures-util.workspace = true
+anyhow.workspace = true
+solana-signature.workspace = true
+solana-transaction-status-client-types = { workspace = true, default-features = false }
+solana-transaction = { workspace = true, features = ["serde", "bincode"] }
+serde.workspace = true
+
+[features]

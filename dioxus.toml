@@ -1,0 +1,8 @@
+[application]
+name = "Block Insight"
+
+[profile.dev.env]
+API_BASE = "test"
+
+[profile.release.env]
+API_BASE = "release"

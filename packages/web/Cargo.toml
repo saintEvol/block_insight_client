@@ -1,0 +1,16 @@
+[package]
+name = "web"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+models.workspace = true
+dioxus = { workspace = true, features = ["router"] }
+ui = { workspace = true }
+console_error_panic_hook.workspace = true
+log = "0.4.27"
+
+[features]
+default = ["web"]
+web = ["dioxus/web"]
+

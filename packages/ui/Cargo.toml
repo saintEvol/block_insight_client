@@ -1,0 +1,21 @@
+[package]
+name = "ui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+models.workspace = true
+block_insight_cross = {workspace = true, features = ["serde-traits"]}
+
+anyhow.workspace = true
+serde_json.workspace = true
+dioxus = { workspace = true}
+#dioxus-primitives = {workspace = true}
+getrandom = {workspace = true, features = ["wasm_js"]}
+futures-util.workspace = true
+solana-signature.workspace = true
+solana-transaction-status-client-types.workspace = true
+solana-transaction = {workspace = true, features = ["serde", "bincode"]}
+
+[features]
+#server = ["api/server"]

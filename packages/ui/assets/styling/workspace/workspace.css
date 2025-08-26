@@ -1,0 +1,29 @@
+#out_container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    border: red 1px solid;
+
+}
+
+#left {
+    width: 20%;
+    height: 100%;
+    border: red 1px solid;
+    overflow-x: hidden;
+
+}
+
+#main {
+    overflow: auto;
+    flex-grow: 1;
+    text-align: center;
+
+}
+
+#right {
+    height: 100%;
+    width: 20%;
+    border: red 1px solid;
+
+}
