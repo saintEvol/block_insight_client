@@ -1,29 +1,14 @@
-use crate::state_provider::StateProvider;
 use crate::workspace::transaction_service::{TransactionCmd, TransactionServiceState};
-use dioxus::hooks::use_context;
-use dioxus::prelude::{Coroutine, use_context_provider};
+use dioxus::{
+    hooks::use_context,
+    prelude::{Coroutine, use_context_provider},
+};
 
 #[derive(Clone, Copy)]
 pub struct WorkspaceState {
     pub transaction_service_state: TransactionServiceState,
     pub transaction_service: Coroutine<TransactionCmd>,
 }
-
-// impl Default for WorkspaceState {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
-
-// impl StateProvider for WorkspaceState {
-//     fn use_context_provider() -> Self {
-//         todo!()
-//     }
-//
-//     fn use_context() -> Self {
-//         todo!()
-//     }
-// }
 
 impl WorkspaceState {
     pub fn start() -> WorkspaceState {
@@ -34,6 +19,10 @@ impl WorkspaceState {
             let state = Self::new(transaction_service_state, transaction_service);
             state
         })
+    }
+
+    pub fn use_context() -> Self {
+        use_context()
     }
 
     fn new(

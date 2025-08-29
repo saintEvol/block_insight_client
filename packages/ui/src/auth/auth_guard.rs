@@ -1,12 +1,17 @@
 use dioxus::prelude::*;
-use models::auth::auth_state::AuthState;
-use models::auth::user_role::UserRole;
-use models::state_provider::StateProvider;
+use models::{
+    auth::{auth_service::AuthService, user_role::UserRole},
+    service::service_provider::ServiceProvider,
+};
 
 #[component]
-pub fn AuthGuard(required_role: Option<UserRole>, target: Option<String>, children: Element) -> Element {
+pub fn AuthGuard(
+    required_role: Option<UserRole>,
+    target: Option<String>,
+    children: Element,
+) -> Element {
     let navigator = use_navigator();
-    let auth = AuthState::use_context();
+    let auth = AuthService::use_service();
     let auth_clone = auth.clone();
     let role = required_role.clone();
     use_effect(move || {
@@ -19,8 +24,8 @@ pub fn AuthGuard(required_role: Option<UserRole>, target: Option<String>, childr
         }
     });
     if auth.is_authenticated(&required_role) {
-      children
+        children
     } else {
-        rsx!{}
+        rsx! {}
     }
 }

@@ -14,7 +14,7 @@ pub fn LeftPanel() -> Element {
 fn route_content() -> Element {
     let workspace = use_context::<WorkspaceState>();
     let transaction_service = &workspace.transaction_service_state;
-    match &*transaction_service.real_handling_data.read_unchecked() {
+    match &*transaction_service.filtered_handling_data.read_unchecked() {
         None => {
             rsx! {
                 "没有数据"

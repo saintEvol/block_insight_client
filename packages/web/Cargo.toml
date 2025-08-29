@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 models.workspace = true
+utils.workspace = true
+
 dioxus = { workspace = true, features = ["router"] }
 ui = { workspace = true }
 console_error_panic_hook.workspace = true

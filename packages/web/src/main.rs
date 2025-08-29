@@ -1,10 +1,8 @@
 use dioxus::logger::tracing::info;
 use dioxus::prelude::*;
-use dioxus::router::RouterConfig;
-use models::app::app_state::AppState;
-use models::state_provider::StateProvider;
-use models::{init, init_network};
-use ui::Navbar;
+use models::app::app_state::GlobalService;
+use models::service::service_provider::ServiceProvider;
+use models::{init_network, init_services};
 use ui::{
     Help,
     auth::{login::Login, register::Register},
@@ -29,7 +27,7 @@ enum Route {
 
 }
 
-const FAVICON: Asset = asset!("/assets/favicon.ico");
+// const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 
 fn main() {
@@ -42,9 +40,11 @@ fn main() {
 fn App() -> Element {
     // Build cool things ✌️
     info!("启动app");
-    init();
-    let app = AppState::use_context();
-    let doing = app.doing.read_unchecked().clone();
+    init_services();
+
+    let global_service = GlobalService::use_service();
+    let doing = global_service.doing.read_unchecked().clone();
+    utils::ws_cross::WebSocket::use_web_socket_provider();
     rsx! {
         // Global app resources
         document::Link { rel: "stylesheet", href: MAIN_CSS }

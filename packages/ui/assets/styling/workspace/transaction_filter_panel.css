@@ -3,11 +3,12 @@
 
 #filter_items_container {
     display: flex;
+    border: red solid 3px;
     width: 100%;
     flex-direction: column;
     align-items: start;
     gap: 0.5rem;
-    padding: 1rem 0 2rem 0;
+    padding: 0rem 0 1rem 0;
 
 }
 
@@ -22,6 +23,13 @@
 
 #tx_filter_button {
     width: 100%;
+    font-size: 1rem;
+}
+#add_additional_filter_button {
+    width: 100%;
+    font-size: 1rem;
+    background: blue;
+    color: white;
 }
 
 .two_line_filter_item_container {
@@ -29,4 +37,20 @@
     width: 100%;
     align-items: start;
     flex-direction: column;
+}
+
+.filter_items_kind {
+    background-color: red;
+    padding: 0.1rem;
+}
+
+.filter_items_flag_container {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+}
+.additional_filter_remove_button {
+
 }

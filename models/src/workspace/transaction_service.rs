@@ -12,7 +12,7 @@ use block_insight_cross::utils::TransactionAccounts;
 use dioxus::hooks::UnboundedReceiver;
 use dioxus::logger::tracing::{error, info};
 use dioxus::prelude::*;
-use dioxus::prelude::{Coroutine, Readable, Signal, Writable, use_coroutine};
+use dioxus::prelude::{Coroutine, Signal, use_coroutine};
 use futures_util::StreamExt;
 use solana_transaction_status_client_types::{
     EncodedConfirmedTransactionWithStatusMeta, EncodedTransaction,
@@ -24,7 +24,7 @@ use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use std::str::FromStr;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum TransactionServiceModule {
     Query,
     QueryNearby,
@@ -234,7 +234,7 @@ pub struct TransactionServiceState {
     /// 当前正在处理的数据
     pub handling_data: Signal<Option<HandlingData>>,
     /// 真正的正在处理的数据，即原原始数据上进行过滤筛选后得到数据集,即用户可见数据集
-    pub real_handling_data: Signal<Option<HandlingData>>,
+    pub filtered_handling_data: Signal<Option<HandlingData>>,
     /// 正在进行检视的数据,用户选择的正在进行详细检视的数据
     pub inspecting_data: Signal<Option<InspectingDataStatus>>,
     /// 当前错误
@@ -242,8 +242,12 @@ pub struct TransactionServiceState {
     /// 当前的过滤上下文
     pub transaction_filter_context: Signal<TransactionFilterContext>,
     /// 过滤器集合
-    pub transaction_filter:
+    pub transaction_filters:
         Signal<HashMap<TypeId, Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>>>,
+    /// 附加过滤器，会依次对被transaction_filters过滤掉的结果再次过滤，如果符合条件，则会将此被排除的数据放回,不同的过滤器集合间为或的关系，但同一个集合中的过滤器间为且的关系
+    pub additional_filters: Signal<
+        Vec<HashMap<TypeId, Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>>>,
+    >,
     // pub filters:
 }
 
@@ -255,7 +259,7 @@ impl TransactionServiceState {
         let id = filter.id();
         let filter =
             Box::new(filter) as Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>;
-        self.transaction_filter.write().insert(id, filter);
+        self.transaction_filters.write().insert(id, filter);
     }
 
     pub fn remove_filter(
@@ -263,17 +267,21 @@ impl TransactionServiceState {
         filter: impl TransactionFilter<ContextType = TransactionFilterContext> + 'static,
     ) {
         let id = filter.id();
-        self.transaction_filter.write().remove(&id);
+        self.transaction_filters.write().remove(&id);
     }
 
     pub fn set_and_apply_filters(
         &mut self,
-        filters: HashMap<
+        main_filters: HashMap<
             TypeId,
             Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>,
         >,
+        additional_filters: Vec<
+            HashMap<TypeId, Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>>,
+        >,
     ) {
-        self.transaction_filter.set(filters);
+        self.transaction_filters.set(main_filters);
+        self.additional_filters.set(additional_filters);
         self.apply_filters();
     }
 
@@ -283,16 +291,18 @@ impl TransactionServiceState {
         let transaction_service_error = use_signal(|| None);
         let transaction_filter = use_signal(|| HashMap::new());
         let inspecting_data = use_signal(|| None);
+        let additional_filters = use_signal(|| Vec::new());
 
         let mut state = TransactionServiceState {
             transaction_focus: use_signal(|| TransactionServiceModule::Query),
             transaction_service_status: use_signal(|| TransactionServiceStatus::Idle),
             handling_data,
-            real_handling_data,
+            filtered_handling_data: real_handling_data,
             inspecting_data,
             transaction_service_error,
             transaction_filter_context: use_signal(|| TransactionFilterContext::default()),
-            transaction_filter,
+            transaction_filters: transaction_filter,
+            additional_filters,
         };
         state
     }
@@ -330,16 +340,23 @@ impl TransactionServiceState {
                     .collect::<Vec<_>>();
                 // 应用过滤器
                 let mut context = TransactionFilterContext::default();
+                let additional_filters = self.additional_filters.peek_unchecked();
+                let additional_filters = additional_filters
+                    .iter()
+                    .filter(|f| !f.is_empty())
+                    .collect::<Vec<_>>();
                 let data = Self::do_apply_filters(
                     &raw_resp,
                     &mut context,
-                    &*self.transaction_filter.read_unchecked(),
+                    &*self.transaction_filters.peek_unchecked(),
+                    &additional_filters,
                 );
                 info!("after filter , len: {}", data.len());
                 self.handling_data
                     .set(Some(HandlingData::QueryNearby(Rc::new(raw_resp))));
-                self.real_handling_data
+                self.filtered_handling_data
                     .set(Some(HandlingData::QueryNearby(Rc::new(data))));
+                // todo: 未处理当前焦点数据是否符合要求
                 self.inspecting_data.set(
                     current.map(|c| {
                         InspectingDataStatus::Active(InspectingData::SingleTransaction(c))
@@ -351,7 +368,7 @@ impl TransactionServiceState {
             Err(e) => {
                 self.transaction_service_error.set(Some(e));
                 self.handling_data.set(None);
-                self.real_handling_data.set(None);
+                self.filtered_handling_data.set(None);
             }
         }
         self.transaction_service_status
@@ -379,14 +396,14 @@ impl TransactionServiceState {
                 let data = ParsedEncodedConfirmedTransactionWithStatusMeta::new(resp);
                 self.handling_data
                     .set(Some(HandlingData::Query(data.clone())));
-                self.real_handling_data
+                self.filtered_handling_data
                     .set(Some(HandlingData::Query(data.clone())));
             }
             Err(e) => {
                 error!("error when req: {e:?}");
                 self.transaction_service_error.set(Some(e));
                 self.handling_data.set(None);
-                self.real_handling_data.set(None);
+                self.filtered_handling_data.set(None);
             }
         }
 
@@ -404,20 +421,32 @@ impl TransactionServiceState {
                 HandlingData::Query(_) => {}
                 HandlingData::QueryNearby(data) => {
                     let mut ctx = TransactionFilterContext::default();
-                    let filters = &*self.transaction_filter.read_unchecked();
-                    let real_handling_data = Self::do_apply_filters(data, &mut ctx, filters);
+                    let filters = &*self.transaction_filters.peek_unchecked();
+                    let additional_filters = &*self.additional_filters.peek_unchecked();
+                    let additional_filters = additional_filters
+                        .iter()
+                        // 过滤掉没有过滤器的容器，以避免干扰正常过滤
+                        .filter(|f| !f.is_empty())
+                        .collect::<Vec<_>>();
+                    let real_handling_data =
+                        Self::do_apply_filters(data, &mut ctx, filters, &additional_filters);
                     let inspecting_data = self.inspecting_data.write_unchecked().take();
                     if let Some(mut inspecting_data) = inspecting_data {
                         match inspecting_data.data_ref() {
                             InspectingData::SingleTransaction(inspecting_tx) => {
                                 let is_active =
-                                    Self::filter_transaction(inspecting_tx, &mut ctx, filters);
+                                    Self::filter_transaction(inspecting_tx, &mut ctx, filters)
+                                        || Self::additional_filter_transaction(
+                                            &inspecting_tx,
+                                            &mut ctx,
+                                            &additional_filters,
+                                        );
                                 let inspecting_data = inspecting_data.set_active_status(is_active);
                                 self.inspecting_data.set(Some(inspecting_data))
                             }
                         }
                     }
-                    self.real_handling_data
+                    self.filtered_handling_data
                         .set(Some(HandlingData::QueryNearby(Rc::new(real_handling_data))));
                 }
             },
@@ -431,6 +460,10 @@ impl TransactionServiceState {
             TypeId,
             Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>,
         >,
+        additional_filters: &[&HashMap<
+            TypeId,
+            Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>,
+        >],
     ) -> Vec<CheapBlockTransaction> {
         if filters.is_empty() {
             return data.to_vec();
@@ -443,7 +476,16 @@ impl TransactionServiceState {
                 .iter()
                 .filter_map(|t| {
                     let keep = Self::filter_transaction(t, context, filters);
-                    if keep { Some(t.clone()) } else { None }
+                    if keep {
+                        Some(t.clone())
+                    } else {
+                        // 应用附加过滤器
+                        if Self::additional_filter_transaction(t, context, additional_filters) {
+                            Some(t.clone())
+                        } else {
+                            None
+                        }
+                    }
                 })
                 .collect::<Vec<_>>();
             let new = CheapBlockTransaction {
@@ -468,6 +510,19 @@ impl TransactionServiceState {
         filters
             .iter()
             .all(|(_, filter)| filter.filter(&*transaction, context))
+    }
+
+    fn additional_filter_transaction(
+        transaction: &ParsedEncodedConfirmedTransactionWithStatusMeta,
+        context: &mut TransactionFilterContext,
+        filters: &[&HashMap<
+            TypeId,
+            Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>,
+        >],
+    ) -> bool {
+        filters
+            .iter()
+            .any(|filter| Self::filter_transaction(&transaction, context, filter))
     }
 }
 

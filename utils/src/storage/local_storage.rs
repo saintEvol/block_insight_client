@@ -1,17 +1,15 @@
-use std::sync::RwLock;
+use crate::storage::kv_storage::KvStorage;
 use dioxus::logger::tracing::error;
 use once_cell::sync::Lazy;
-use crate::storage::kv_storage::KvStorage;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::sync::RwLock;
 
-pub static LOCAL_STORAGE: Lazy<LocalStorageProvider> = Lazy::new(|| {
-    LocalStorageProvider
-});
+pub static LOCAL_STORAGE: Lazy<LocalStorageProvider> = Lazy::new(|| LocalStorageProvider);
 
 pub trait LocalStorage: Serialize + DeserializeOwned {
     fn key() -> &'static str;
-    fn save(&self, ) {
+    fn save(&self) {
         LOCAL_STORAGE.save(Self::key(), serde_json::to_string(self).unwrap())
     }
 
@@ -28,7 +26,6 @@ pub trait LocalStorage: Serialize + DeserializeOwned {
         } else {
             None
         }
-
     }
 }
 
@@ -44,14 +41,14 @@ impl KvStorage for LocalStorageProvider {
 
     fn load<T>(&self, key: &str) -> Option<T>
     where
-        T: DeserializeOwned
+        T: DeserializeOwned,
     {
         todo!("load local storage")
     }
 }
 
 impl LocalStorageProvider {
-    pub fn use_context_provider() -> Self {
+    pub fn init() -> Self {
         dioxus::prelude::use_context_provider(|| LocalStorageProvider)
     }
 
@@ -91,6 +88,5 @@ impl KvStorage for LocalStorageProvider {
         } else {
             None
         }
-
     }
 }

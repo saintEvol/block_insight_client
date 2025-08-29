@@ -7,6 +7,7 @@ edition = "2024"
 models.workspace = true
 block_insight_cross = {workspace = true, features = ["serde-traits"]}
 
+sea-orm-macros = {workspace = true}
 anyhow.workspace = true
 serde_json.workspace = true
 dioxus = { workspace = true}

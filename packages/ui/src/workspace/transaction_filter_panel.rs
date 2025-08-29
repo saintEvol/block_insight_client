@@ -1,15 +1,16 @@
-use dioxus::core_macro::rsx;
-use dioxus::logger::tracing::info;
-use dioxus::prelude::*;
-use std::any::TypeId;
-use std::collections::HashMap;
-use block_insight_cross::transaction::transaction_filter::{TransactionFilter, TransactionFilterContext};
 use block_insight_cross::transaction::transaction_filter::account_filter::AccountFilter;
 use block_insight_cross::transaction::transaction_filter::circle_swap_filter::CircleSwapFilter;
 use block_insight_cross::transaction::transaction_filter::signature_filter::SignatureFilter;
 use block_insight_cross::transaction::transaction_filter::status_filter::TransactionStatusFilter;
-use models::workspace::transaction_service::TransactionServiceState;
+use block_insight_cross::transaction::transaction_filter::{
+    TransactionFilter, TransactionFilterContext,
+};
+use dioxus::core_macro::rsx;
+use dioxus::logger::tracing::info;
+use dioxus::prelude::*;
 use models::WorkspaceState;
+use std::any::TypeId;
+use std::collections::HashMap;
 
 const FILTER_PANEL_STYLE: Asset = asset!("/assets/styling/workspace/transaction_filter_panel.css");
 
@@ -26,12 +27,11 @@ struct FilterContext {
     filtering_status: Signal<bool>,
 
     need_filter_circle_swap: Signal<bool>,
-
-    transaction_service_state: TransactionServiceState,
+    // transaction_service_state: TransactionServiceState,
 }
 
 impl FilterContext {
-    fn new(transaction_service_state: TransactionServiceState) -> Self {
+    fn new() -> Self {
         let need_filter_account = Signal::new(false);
         let filtering_accounts = Signal::new("".into());
 
@@ -48,28 +48,27 @@ impl FilterContext {
             need_filter_signature,
             filtering_accounts,
             need_filter_circle_swap,
-            transaction_service_state,
             filtering_signatures,
             need_filter_status,
             filtering_status,
         }
     }
 
-    fn apply_filters(&mut self) {
-        // 收集过滤器
-        let mut filters: HashMap<
-            TypeId,
-            Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>,
-        > = HashMap::new();
-
-        self.collect_filter(&mut filters, self.make_status_filter());
-        self.collect_filter(&mut filters, self.make_signature_filter());
-        self.collect_filter(&mut filters, self.make_account_filter());
-        self.collect_filter(&mut filters, self.make_circle_swap_filter());
-
-        self.transaction_service_state
-            .set_and_apply_filters(filters);
-    }
+    // fn apply_filters(&mut self) {
+    //     // 收集过滤器
+    //     let mut filters: HashMap<
+    //         TypeId,
+    //         Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>,
+    //     > = HashMap::new();
+    //
+    //     self.collect_filter(&mut filters, self.make_status_filter());
+    //     self.collect_filter(&mut filters, self.make_signature_filter());
+    //     self.collect_filter(&mut filters, self.make_account_filter());
+    //     self.collect_filter(&mut filters, self.make_circle_swap_filter());
+    //
+    //     self.transaction_service_state
+    //         .set_and_apply_filters(filters);
+    // }
 
     fn make_circle_swap_filter(&self) -> anyhow::Result<Option<CircleSwapFilter>> {
         if *self.need_filter_circle_swap.peek_unchecked() {
@@ -129,7 +128,19 @@ impl FilterContext {
         Ok(Some(SignatureFilter::Include(accounts)))
     }
 
-    fn collect_filter(
+    pub fn collect_filter(
+        &self,
+    ) -> HashMap<TypeId, Box<dyn TransactionFilter<ContextType = TransactionFilterContext>>> {
+        let mut filters = HashMap::new();
+        self.do_collect_filter(&mut filters, self.make_status_filter());
+        self.do_collect_filter(&mut filters, self.make_signature_filter());
+        self.do_collect_filter(&mut filters, self.make_account_filter());
+        self.do_collect_filter(&mut filters, self.make_circle_swap_filter());
+
+        filters
+    }
+
+    fn do_collect_filter(
         &self,
         container: &mut HashMap<
             TypeId,
@@ -149,13 +160,35 @@ impl FilterContext {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum FilterItemsKind {
+    Main,
+    Additional,
+}
+
 #[component]
 pub fn TransactionFilterPanel() -> Element {
     let workspace_state = use_context::<WorkspaceState>();
-    let transaction_service_state = workspace_state.transaction_service_state;
-    let mut filter_context = use_context_provider(|| FilterContext::new(transaction_service_state));
+    let mut transaction_service_state = workspace_state.transaction_service_state;
+    let filter_context = use_context_provider(|| FilterContext::new());
+    let additional_filter_contexts = use_signal(|| Vec::new());
+    let mut additional_filter_contexts: Signal<Vec<FilterContext>> =
+        use_context_provider(|| additional_filter_contexts);
+    let additional_filters_len = additional_filter_contexts.read_unchecked().len();
     let on_click_filter = move |_e| {
-        filter_context.apply_filters();
+        let main = filter_context.collect_filter();
+        let additional = additional_filter_contexts
+            .read_unchecked()
+            .iter()
+            .map(|c| c.collect_filter())
+            .collect::<Vec<_>>();
+        transaction_service_state.set_and_apply_filters(main, additional);
+    };
+
+    let on_click_add_additional_filter = move |e| {
+        additional_filter_contexts
+            .write()
+            .push(FilterContext::new());
     };
 
     rsx! {
@@ -169,7 +202,23 @@ pub fn TransactionFilterPanel() -> Element {
                 "交易筛选器"
             }
 
-            TransactionFilterItems {}
+            TransactionFilterItems {
+                kind: FilterItemsKind::Main,
+                idx: 0,
+            }
+
+            for idx in 0..additional_filters_len {
+                TransactionFilterItems {
+                    kind: FilterItemsKind::Additional,
+                    idx,
+                }
+            }
+
+            button {
+                id: "add_additional_filter_button",
+                onclick: on_click_add_additional_filter,
+                "增加附加筛选器"
+            }
 
             button {
                 id: "tx_filter_button",
@@ -181,18 +230,29 @@ pub fn TransactionFilterPanel() -> Element {
 }
 
 #[component]
-fn TransactionFilterItems() -> Element {
-    let FilterContext {
-        need_filter_account,
-        filtering_accounts,
-        need_filter_signature,
-        filtering_signatures,
-        need_filter_status,
-        mut filtering_status,
-        need_filter_circle_swap,
+fn TransactionFilterItems(kind: FilterItemsKind, idx: usize) -> Element {
+    let (
+        FilterContext {
+            need_filter_account,
+            filtering_accounts,
+            need_filter_signature,
+            filtering_signatures,
+            need_filter_status,
+            mut filtering_status,
+            need_filter_circle_swap,
+        },
+        flag,
+        is_main,
+    ) = match kind {
+        FilterItemsKind::Main => (use_context::<FilterContext>(), "主", true),
+        FilterItemsKind::Additional => {
+            let all = use_context::<Signal<Vec<FilterContext>>>();
+            (all.read_unchecked()[idx], "附", false)
+        }
+    };
 
-        transaction_service_state,
-    } = use_context::<FilterContext>();
+    let additional = use_context::<Signal<Vec<FilterContext>>>();
+
     let check_cb = |mut sig: Signal<bool>| {
         move |event: Event<FormData>| {
             sig.set(event.checked());
@@ -211,10 +271,27 @@ fn TransactionFilterItems() -> Element {
             filtering_status.set(false);
         }
     };
+    let on_remove = move |e| {
+        additional.write_unchecked().remove(idx);
+    };
 
     rsx! {
         div {
             id: "filter_items_container",
+            div {
+                class: "filter_items_flag_container",
+                div {
+                    class: "filter_items_kind",
+                   {flag}
+                }
+                if !is_main {
+                    button {
+                        class: "additional_filter_remove_button",
+                        onclick: on_remove,
+                        "移除"
+                    }
+                }
+            }
             // 签名过滤
             div {
                 class: "two_line_filter_item_container",

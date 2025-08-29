@@ -1,10 +1,9 @@
 use dioxus::core::Element;
 use dioxus::document::Stylesheet;
-use dioxus::html::Key::Link;
 use dioxus::prelude::*;
-use models::app::app_state::AppState;
-use models::auth::auth_state::AuthState;
-use models::state_provider::StateProvider;
+use models::app::app_state::GlobalService;
+use models::auth::auth_service::AuthService;
+use models::service::service_provider::ServiceProvider;
 
 const LOGIN_STYLE: Asset = asset!("/assets/styling/auth/login_register.css");
 
@@ -20,7 +19,7 @@ pub fn LoginRegister(panel_type: LoginPanelType) -> Element {
     let user_name_input = use_signal(|| "".to_string());
     let password_input = use_signal(|| "".to_string());
     let confirming_password_input = use_signal(|| "".to_string());
-    let app = AppState::use_context();
+    let app = GlobalService::use_service();
     let update_input = |mut c: Signal<String>| move |e: Event<FormData>| c.set(e.value());
 
     let is_login = match panel_type {
@@ -29,7 +28,7 @@ pub fn LoginRegister(panel_type: LoginPanelType) -> Element {
     };
     let content = if is_login { "登录" } else { "注册" };
     let other_content = if is_login { "注册" } else { "登录" };
-    let auth = AuthState::use_context();
+    let auth = AuthService::use_service();
     let on_click = move |e| {
         if !is_login {
             auth.register(

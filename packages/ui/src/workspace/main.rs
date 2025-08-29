@@ -12,7 +12,7 @@ const MAIN_STYLE: Asset = asset!("/assets/styling/workspace/main.css");
 pub fn Main() -> Element {
     let workspace = use_context::<WorkspaceState>();
     // let status = workspace.transaction_service_state.transaction_service_status;
-    match &*workspace.transaction_service_state.real_handling_data.read_unchecked() {
+    match &*workspace.transaction_service_state.filtered_handling_data.read_unchecked() {
         Some(_r) => {
             rsx! {
                  document::Stylesheet{href: MAIN_STYLE},

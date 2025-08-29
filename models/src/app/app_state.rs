@@ -1,27 +1,26 @@
 use dioxus::prelude::*;
-use crate::state_provider::StateProvider;
+
+use crate::service::service_provider::Service;
 
 #[derive(Copy, Clone)]
-pub struct AppState {
+pub struct GlobalService {
     pub doing: Signal<Option<String>>,
 }
 
-impl AppState {
+impl Service for GlobalService {
+    fn instance() -> Self {
+        let doing = use_signal(|| None);
+        GlobalService { doing }
+    }
+}
+
+impl GlobalService {
     pub fn engaged(&mut self, content: String) {
         self.doing.set(Some(content));
     }
 
     pub fn unengaged(&mut self) {
         self.doing.set(None);
-    }
-
-    pub fn use_context_provider() -> Self {
-        use_context_provider(||{
-            let state = AppState {
-                doing: Signal::new(None),
-            };
-            state
-        })
     }
 }
 
