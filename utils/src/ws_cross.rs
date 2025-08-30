@@ -13,6 +13,13 @@ use futures_util::StreamExt;
 use prost::Message;
 use std::ops::ControlFlow;
 use std::time::Duration;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum WebSocketError {
+    #[error("websocket还未连接")]
+    NotConnected,
+}
 
 pub struct WebSocket {}
 impl WebSocket {
@@ -37,6 +44,7 @@ impl WebSocket {
         task.peek_unchecked().is_some()
     }
 
+    /// 连接服务器，如果已经连接，会先关闭旧连接
     pub fn connect(url: String, cb: EventHandler) {
         let cmd_sender = Self::use_web_socket();
         cmd_sender.send(WebSocketCmd::Connect(url, cb));
@@ -67,9 +75,15 @@ impl WebSocket {
         task.map(|task| task.cancel());
     }
 
-    pub fn send(msg: Payload) {
+    pub fn send(msg: Payload) -> Result<(), WebSocketError> {
+        if !Self::connected() {
+            return Err(WebSocketError::NotConnected);
+        }
+
         let cmd_sender = Self::use_web_socket();
         cmd_sender.send(WebSocketCmd::Send(msg));
+
+        Ok(())
     }
 
     fn use_web_socket() -> Coroutine<WebSocketCmd> {

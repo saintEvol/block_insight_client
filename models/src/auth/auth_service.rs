@@ -6,7 +6,7 @@ use crate::service::service_provider::{Service, ServiceProvider};
 use block_insight_cross::api::api_error::ApiError;
 use block_insight_cross::api::auth;
 use block_insight_cross::api::auth::RegisterParams;
-use block_insight_cross::protos::messages::auth::LogoutReq;
+use block_insight_cross::protos::messages::auth::{LoginResp, LogoutReq, LogoutResp};
 use block_insight_cross::protos::messages::client::client_message::Payload;
 use dioxus::logger::tracing::{error, info};
 use dioxus::prelude::*;
@@ -67,8 +67,12 @@ impl AuthService {
         network_service.send(Payload::LogoutReq(LogoutReq {}));
     }
 
-    pub fn on_logout(&self) {
+    pub fn on_logout(&self, logout_resp: LogoutResp) {
         todo!("when logout successfully")
+    }
+
+    pub fn on_login(&self, login_resp: LoginResp) {
+        todo!("when login successfully");
     }
 
     pub fn is_authenticated(&self, role: &Option<UserRole>) -> bool {

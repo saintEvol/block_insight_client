@@ -30,7 +30,8 @@
 
 .home_content_container {
     width: 30%;
-    gap: 1rem;
+    text-align: center;
+    gap: 2rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -39,4 +40,12 @@
 .home_menu_item {
     width: 100%;
     font-size: 1.5rem;
+}
+
+.home_content_button_container {
+    width: 100%;
+    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }

@@ -21,16 +21,23 @@ pub fn Home() -> Element {
             class: "home_container",
             div {
                 class: "home_content_container",
-                button{
-                    class: "home_menu_item",
-                    "工作区"
+                div {
+                    "欢迎您！"
+                }
+                div {
+                    class: "home_content_button_container",
+                    button{
+                        class: "home_menu_item",
+                        "工作区"
+                    }
+
+                    button {
+                        class: "home_menu_item",
+                        onclick: on_click_login_or_logout,
+                        {login_btn_label}
+                    }
                 }
 
-                button {
-                    class: "home_menu_item",
-                    onclick: on_click_login_or_logout,
-                    {login_btn_label}
-                }
             }
         }
         // AuthGuard {
@@ -38,5 +45,22 @@ pub fn Home() -> Element {
         //     target: None,
         //     Workspace {}
         // }
+    }
+}
+
+#[component]
+fn Welcome() -> Element {
+    let auth = AuthService::use_service();
+    let authenticated = auth.is_authenticated(&None);
+    rsx! {
+        div {
+            if authenticated {
+                div {
+
+                }
+            } else {
+                div {  }
+            }
+        }
     }
 }

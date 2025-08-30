@@ -3627,7 +3627,9 @@ dependencies = [
  "anyhow",
  "block_insight_cross",
  "dioxus",
+ "ewebsock",
  "futures-util",
+ "prost",
  "reqwest",
  "serde",
  "serde_json",
@@ -3635,6 +3637,7 @@ dependencies = [
  "solana-transaction",
  "solana-transaction-error",
  "solana-transaction-status-client-types",
+ "tokio",
  "utils",
 ]
 
@@ -8102,6 +8105,7 @@ dependencies = [
  "prost",
  "serde",
  "serde_json",
+ "thiserror 2.0.16",
  "tokio",
  "web-sys",
 ]
